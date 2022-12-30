@@ -21,5 +21,8 @@ namespace Native
 
 		[DllImport("ws2811.so")]
 		public static extern IntPtr ws2811_get_return_t_str(int state);
+
+		[DllImport("libc.so.6")]
+		public static extern int geteuid();
 	}
 }

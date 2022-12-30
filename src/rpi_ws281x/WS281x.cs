@@ -4,6 +4,13 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 
+/// TODO: rewrite this wrapper class
+/// The native structure has an array that isn't blittable, requiring various accommodations.
+/// Beyond that the wrapper needs some general cleanup
+///
+/// Note that this requires the native library to be present, and must run as root due
+/// to the requirement to use mmap()
+
 namespace rpi_ws281x
 {
 	/// <summary>
@@ -21,22 +28,23 @@ namespace rpi_ws281x
 		/// <param name="settings">Settings used for initialization</param>
 		public WS281x(Settings settings)
 		{
+			if (PInvoke.geteuid() != 0)
+				throw new Exception("root access required to use WS281x");
+
 			_ws2811 = new ws2811_t();
-			//Pin the object in memory. Otherwies GC will probably move the object to another memory location.
+			//Pin the object in memory. Otherwise GC will probably move the object to another memory location.
 			//This would cause errors because the native library has a pointer on the memory location of the object.
 			_ws2811Handle = GCHandle.Alloc(_ws2811, GCHandleType.Pinned);
 
 			_ws2811.dmanum	= settings.DMAChannel;
 			_ws2811.freq	= settings.Frequency;
-			_ws2811.channel = new ws2811_channel_t[PInvoke.RPI_PWM_CHANNELS];
+			_ws2811.channel0= new();
+			_ws2811.channel1= new();
 
-			for(int i=0; i<= _ws2811.channel.Length -1; i++)
-			{
+
+			for (int i=0; i< 2; i++)
 				if(settings.Channels[i] != null)
-				{
 					InitChannel(i, settings.Channels[i]);
-				}
-			}
 
 			Settings = settings;
 
@@ -62,7 +70,9 @@ namespace rpi_ws281x
 				if (Settings.Channels[i] != null)
 				{
 					var ledColor = Settings.Channels[i].LEDs.Select(x => x.RGBValue).ToArray();
-					Marshal.Copy(ledColor, 0, _ws2811.channel[i].leds, ledColor.Count());
+					ref ws2811_channel_t channel = ref _ws2811.channel0;
+					if (i == 1) channel = ref _ws2811.channel1;
+					Marshal.Copy(ledColor, 0, channel.leds, ledColor.Count());
 				}
 			}
 			
@@ -86,6 +96,17 @@ namespace rpi_ws281x
 		}
 
 		/// <summary>
+		/// Set all LEDs in a specified channel to the same color
+		/// </summary>
+		/// <param name="channelIndex">Channel which controls the LED</param>
+		/// <param name="color">New color</param>
+		public void SetAllLEDColor(int channelIndex, Color color)
+		{
+			for (int i = 0; i < Settings.Channels[channelIndex].LEDs.Count; i++)
+				Settings.Channels[channelIndex].LEDs[i].Color = color;
+		}
+
+		/// <summary>
 		/// Returns the settings which are used to initialize the component
 		/// </summary>
 		public Settings Settings { get; private set; }
@@ -97,16 +118,18 @@ namespace rpi_ws281x
 		/// <param name="channelSettings">Settings for the channel</param>
 		private void InitChannel(int channelIndex, Channel channelSettings)
 		{
-			_ws2811.channel[channelIndex].count			= channelSettings.LEDs.Count;
-			_ws2811.channel[channelIndex].gpionum		= channelSettings.GPIOPin;
-			_ws2811.channel[channelIndex].brightness	= channelSettings.Brightness;
-			_ws2811.channel[channelIndex].invert		= Convert.ToInt32(channelSettings.Invert);
+            ref ws2811_channel_t channel = ref _ws2811.channel0;
+            if (channelIndex == 1) channel = ref _ws2811.channel1;
+            channel.count = channelSettings.LEDs.Count;
+            channel.gpionum		= channelSettings.GPIOPin;
+			channel.brightness	= channelSettings.Brightness;
+			channel.invert		= Convert.ToInt32(channelSettings.Invert);
 
 			if(channelSettings.StripType != StripType.Unknown)
 			{
 				//Strip type is set by the native assembly if not explicitly set.
 				//This type defines the ordering of the colors e. g. RGB or GRB, ...
-				_ws2811.channel[channelIndex].strip_type = (int)channelSettings.StripType;
+				channel.strip_type = (int)channelSettings.StripType;
 			}
 		}
 
@@ -118,7 +141,7 @@ namespace rpi_ws281x
 		private string GetMessageForStatusCode(ws2811_return_t statusCode)
 		{
 			var strPointer = PInvoke.ws2811_get_return_t_str((int)statusCode);
-			return Marshal.PtrToStringAuto(strPointer);
+			return Marshal.PtrToStringAuto(strPointer) ?? "";
 		}
 
 	#region IDisposable Support
