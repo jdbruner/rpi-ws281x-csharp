@@ -47,7 +47,9 @@ namespace TestApp
 					colorOffset++;
 					System.Threading.Thread.Sleep(50);
 				}
-			}
+                controller.SetAllLEDColor(0, Color.Empty);
+                controller.Render();
+            }
 		}
 
 		private static List<Color> GetAnimationColors()

@@ -28,16 +28,18 @@ namespace TestApp
 			{
 				while(!request.IsAbortRequested)
 				{
-					Wipe(controller, Color.Red);
-					Wipe(controller, Color.Green);
-					Wipe(controller, Color.Blue);
+					Wipe(controller, Color.Red, request);
+					Wipe(controller, Color.Green, request);
+					Wipe(controller, Color.Blue, request);
 				}
-			}
+                controller.SetAllLEDColor(0, Color.Empty);
+                controller.Render();
+            }
 		}
 
-		private static void Wipe(WS281x controller, Color color)
+		private static void Wipe(WS281x controller, Color color, AbortRequest request)
 		{
-			for (int i = 0; i <= controller.Settings.Channels[0].LEDs.Count - 1; i++)
+			for (int i = 0; !request.IsAbortRequested && i <= controller.Settings.Channels[0].LEDs.Count - 1; i++)
 			{
 				controller.SetLEDColor(0, i, color);
 				controller.Render();
