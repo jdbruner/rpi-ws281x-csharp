@@ -6,7 +6,8 @@ using System.Drawing;
 namespace TestApp
 {
 	class Program
-    {		
+    {
+		public const int LedGpioPin = 12;	// TODO - use appsettings.json
 
         static void Main(string[] args)
         {

@@ -22,10 +22,15 @@ namespace rpi_ws281x
 			Channels = new Channel[PInvoke.RPI_PWM_CHANNELS];				
 		}
 
-		/// <summary>
-		/// Returns the used frequency in Hz
-		/// </summary>
-		public uint Frequency { get; private set; }
+        /// <summary>
+        /// Create Settings object with default values
+        /// </summary>
+        public static Settings CreateDefaultSettings() => new Settings();
+
+        /// <summary>
+        /// Returns the used frequency in Hz
+        /// </summary>
+        public uint Frequency { get; private set; }
 
 		/// <summary>
 		/// Returns the DMA channel

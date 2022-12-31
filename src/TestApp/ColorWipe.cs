@@ -22,7 +22,7 @@ namespace TestApp
 
 			//Set brightness to maximum (255)
 			//Use Unknown as strip type. Then the type will be set in the native assembly.
-			settings.Channels[0] = new Channel(ledCount, 18, 255, false, StripType.WS2812_STRIP);
+			settings.Channels[0] = new Channel(ledCount, Program.LedGpioPin, 255, false, StripType.WS2812_STRIP);
 
 			using (var controller = new WS281x(settings))
 			{
